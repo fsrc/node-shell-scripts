@@ -1,11 +1,9 @@
 require! {
   \fs            : { read-file }
   \path          : { join }
-  \prelude-ls    : { any, drop, obj-to-pairs, find, map, keys, values }
+  \prelude-ls    : { tail, any, drop, obj-to-pairs, find, map, keys, values }
   \child_process : { spawn }
 }
-
-# dmenu-arguments = []
 
 say = console.log
 
@@ -70,10 +68,13 @@ is-given = (args-list, name) ->
 has-value = (args-list, name) ->
   args-list
   |> find (itm) -> itm.starts-with(name)
-  |> (itm) -> itm.split('=').1 if itm?
+  |> (itm) ->
+    if itm?
+      t = itm.split('=')
+      |> tail
+      t.join("=")
 
-dmenu = (alternatives, callback) ->
-  dmenu-arguments = [\-p \Chromium \-fn "Liberation Mono:pixelsize=12" \-nb \#2c001e \-nf \#aea79f \-sf \#ffffff \-sb \#dd4814]
+dmenu = (alternatives, dmenu-arguments, callback) ->
 
   cp = spawn('dmenu', dmenu-arguments)
   cp.stdin.write(alternatives.join(\\n))
@@ -87,7 +88,7 @@ PATH = "#{process.env.HOME}/.config/chromium"
 
 args =
   list    : is-given(args-list, \--list)
-  dmenu   : is-given(args-list, \--dmenu)
+  dmenu   : has-value(args-list, \--dmenu)
   path    : has-value(args-list, \--path)
   profile : has-value(args-list, \--profile)
   open    : is-given(args-list, \--open)
@@ -96,38 +97,46 @@ args =
 args.path = PATH if not args.path?
 
 if args.help
-  say """Usage: chromium-profiles [--path=<~/.config/chromium>] [--open=<profile name>] [--list] [--dmenu] [--open] [--help]
+  say """Usage: chromium-profiles [--path=<~/.config/chromium>] [--open | --open=<profile name>] [--dmenu=<dmenu arguments>] [--list] [--help]
 
 Arguments:
-  --path=   Define the path where the 'Local State' file is located. Defaults to '~/.config/chromium'.
-  --open=   Define what profile to open and open it.
-  --dmenu   Use dmenu to make a choice.
-  --list    List profiles available.
-  --help    This info.
+  --path=            Define the path where the 'Local State' file is located. Defaults to '~/.config/chromium'.
+  --open= | --open   Define what profile to open and open it. Or open whatever profile selected when --list --dmenu.
+  --dmenu=           Use dmenu to make a choice. Assign a JSON array to pass arguments to dmenu.
+  --list             List profiles available.
+  --help             This info.
 
 Examples:
-  chromium-profiles --list --dmenu --open   # Will list profiles in dmenu and open the selected in chromium.
-  chromium-profiles --list                  # Will list profiles in stdout
-  chromium-profiles --open="Profile 1"      # Will open profile 1 in chromium.
+  chromium-profiles --list --dmenu=[] --open   # Will list profiles in dmenu and open the selected in chromium.
+  chromium-profiles --list                     # Will list profiles in stdout
+  chromium-profiles --open="Profile 1"         # Will open profile 1 in chromium.
+
+Advanced example, passing arguments to dmenu:
+
+  chromium-profiles --list --open --dmenu='["-p", "Chromium", "-fn", "Liberation Mono:pixelsize=12", "-nb", "#2c001e", "-nf", "\#aea79f", "-sf", "\#ffffff", "-sb", "\#dd4814"]'
 
   """
   process.exit(0)
-
 
 # If --list
 if args.list
   err, usernames <- profile-usernames(PATH)
   if-err(err)
   # AND --dmenu
-  if args.dmenu
-    alternative <- dmenu usernames
+  if args.dmenu?
+    dmenu-arguments = JSON.parse(args.dmenu)
+
+    alternative  <- dmenu usernames, dmenu-arguments
     err, profile <- profile-for-username PATH, alternative.replace(/\n$/, "")
     if-err(err)
+
     # AND --open
     if args.open
       open-chromium-with-profile profile
+
     else
       say profile
+
   else
     usernames |> map (username) -> say username
 

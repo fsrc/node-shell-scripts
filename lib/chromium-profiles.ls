@@ -5,7 +5,10 @@ require! {
   \child_process : { spawn }
 }
 
+# dmenu-arguments = []
+
 say = console.log
+
 
 read-state-file = (path, callback) ->
   file  = join(path, 'Local State')
@@ -70,7 +73,9 @@ has-value = (args-list, name) ->
   |> (itm) -> itm.split('=').1 if itm?
 
 dmenu = (alternatives, callback) ->
-  cp = spawn('dmenu', [])
+  dmenu-arguments = [\-p \Chromium \-fn "Liberation Mono:pixelsize=12" \-nb \#2c001e \-nf \#aea79f \-sf \#ffffff \-sb \#dd4814]
+
+  cp = spawn('dmenu', dmenu-arguments)
   cp.stdin.write(alternatives.join(\\n))
   cp.stdin.end()
   cp.stdout.on('data', (data) ->
@@ -86,16 +91,39 @@ args =
   path    : has-value(args-list, \--path)
   profile : has-value(args-list, \--profile)
   open    : is-given(args-list, \--open)
+  help    : is-given(args-list, \--help)
 
 args.path = PATH if not args.path?
 
+if args.help
+  say """Usage: chromium-profiles [--path=<~/.config/chromium>] [--open=<profile name>] [--list] [--dmenu] [--open] [--help]
+
+Arguments:
+  --path=   Define the path where the 'Local State' file is located. Defaults to '~/.config/chromium'.
+  --open=   Define what profile to open and open it.
+  --dmenu   Use dmenu to make a choice.
+  --list    List profiles available.
+  --help    This info.
+
+Examples:
+  chromium-profiles --list --dmenu --open   # Will list profiles in dmenu and open the selected in chromium.
+  chromium-profiles --list                  # Will list profiles in stdout
+  chromium-profiles --open="Profile 1"      # Will open profile 1 in chromium.
+
+  """
+  process.exit(0)
+
+
+# If --list
 if args.list
   err, usernames <- profile-usernames(PATH)
   if-err(err)
+  # AND --dmenu
   if args.dmenu
     alternative <- dmenu usernames
     err, profile <- profile-for-username PATH, alternative.replace(/\n$/, "")
     if-err(err)
+    # AND --open
     if args.open
       open-chromium-with-profile profile
     else
@@ -103,9 +131,11 @@ if args.list
   else
     usernames |> map (username) -> say username
 
+# If --profile=
 else if args.profile?
   err, profile <- profile-for-username(PATH, argument)
   if-err(err)
+  # AND --open
   if args.open
     open-chromium-with-profile profile
   else

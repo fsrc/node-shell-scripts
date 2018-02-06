@@ -9,7 +9,7 @@
   "keywords": [
     "scripts"
   ],
-  "bin": { "chromium-profiles", "./bin/chromium-profiles.js" },
+  "bin": { "chromium-profiles": "./bin/chromium-profiles.js" },
   "author": "Fredrik Andersson",
   "license": "BSD-2-Clause",
   "dependencies": {

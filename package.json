@@ -9,10 +9,13 @@
   "keywords": [
     "scripts"
   ],
-  "bin": { "chromium-profiles": "./bin/chromium-profiles.js" },
+  "bin": {
+    "chromium-profiles": "./bin/chromium-profiles.js"
+  },
   "author": "Fredrik Andersson",
   "license": "BSD-2-Clause",
   "dependencies": {
+    "imap": "^0.8.19",
     "livescript": "^1.5.0",
     "prelude-ls": "^1.1.2"
   }
